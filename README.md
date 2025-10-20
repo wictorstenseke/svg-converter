@@ -1,72 +1,32 @@
 # SVG to XAML Converter
 
-A simple, client-side web application that converts SVG icons to XAML format compatible with WPF, UWP, and other XAML-based applications.
+Client‑side tool to turn SVG into XAML (WPF/UWP/MAUI and other XAML frameworks).
 
-## Features
+- Open `index.html`
+- Drop or paste an SVG
+- XAML is generated instantly — copy or download
 
-- Simple, streamlined interface with minimal tabs
-- Drag and drop or click to select SVG files
-- Automatic conversion on file upload - no need to click convert
-- Clean side-by-side preview of both SVG and XAML
-- Convenient download button right under the XAML preview
-- Real-time conversion as you type SVG code
-- Works entirely in the browser - no server-side processing required
+Works entirely in the browser (no build/server). License: MIT.
 
-## Supported SVG Elements
+## Pages
 
-The converter handles the following SVG elements:
+- SVG → XAML: `index.html` — Convert SVG to XAML with live preview and download.
+- SVG → Bitmap: `svg-to-bmp.html` — Batch-convert SVGs to BMP with size presets or custom size.
 
-- Paths (`<path>`)
-- Circles (`<circle>`)
-- Ellipses (`<ellipse>`)
-- Rectangles (`<rect>`)
-- Lines (`<line>`)
-- Polylines (`<polyline>`)
-- Polygons (`<polygon>`)
-- Text (`<text>`)
-- Groups (`<g>`)
+## Key functions (XAML page)
 
-## Supported SVG Attributes
+- `convertSvgToXaml(svgCode)`: Parses SVG and builds XAML (`Path`, `Ellipse`, `Rectangle`, `Line`, `TextBlock`), including styles and transforms.
+- `updateXamlPreview()`: Renders the generated XAML back into an SVG preview for quick visual verification.
+- `extractStyles(element)` + `applyStylesToXaml(styles)`: Maps SVG fill/stroke/opacity to XAML attributes.
+- `convertTransform(transform)`: Converts `translate/scale/rotate` to XAML transform elements.
+- `convertColor(color)` and `convertXamlColorToSvg(xamlColor)`: Handles color formats (hex, rgb/rgba, `#AARRGGBB`).
+- `downloadFile(content, filename)`: Utility to download the XAML result.
 
-The converter preserves the following attributes:
+## Key functions (Bitmap page)
 
-- Fill color
-- Stroke color and width
-- Opacity
-- Transformations (translate, scale, rotate)
-- Font properties (for text elements)
-
-## How to Use
-
-1. Simply open the `index.html` file in your web browser.
-2. Use the default "Drop SVG File" tab:
-   - Drag and drop an SVG file onto the drop zone, or
-   - Click anywhere in the drop zone to select a file
-3. Or switch to the "Paste SVG Code" tab to paste SVG code directly
-4. The app will automatically convert your SVG to XAML and show both previews side-by-side
-5. Click the "Download XAML" button under the XAML preview to save the file
-
-## Compatibility
-
-The generated XAML is designed to work with:
-
-- Windows Presentation Foundation (WPF)
-- Universal Windows Platform (UWP)
-- Xamarin.Forms
-- MAUI
-- Other XAML-based frameworks
-
-## Local Development
-
-No build process is required. Just clone the repository and open the `index.html` file in a browser.
-
-```
-git clone https://github.com/yourusername/svg-to-xaml.git
-cd svg-to-xaml
-```
-
-Then open `index.html` in your preferred browser.
-
-## License
-
-MIT 
+- `convertAllFiles()`: Orchestrates batch conversion with progress UI and results list.
+- `convertSVGToBMP(file)` → `processSVGToBMP(svgData, fileName)`: Draws SVG on canvas (with optional aspect ratio) and prepares BMP.
+- `canvasToBMP(canvas)`: Creates a 24‑bit BMP blob (proper headers, row padding, BGR order).
+- `downloadFile(index)` / `downloadFileByBlob(blob, name)` / `downloadAllFiles()`: Single and bulk downloads (ZIP via JSZip).
+- `addFiles(files)` + `updateFilesDisplay()` + `createFileItem(file, index)`: File intake and UI list management.
+- Size and layout: `handleSizePresetClick`, `handleCustomSizeChange`, `handleAspectRatioChange`, `getCurrentSize`.
