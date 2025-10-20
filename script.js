@@ -1,0 +1,939 @@
+document.addEventListener('DOMContentLoaded', function() {
+    const svgFileInput = document.getElementById('svgFile');
+    const svgTextInput = document.getElementById('svgInput');
+    const xamlOutput = document.getElementById('xamlOutput');
+    const downloadButton = document.getElementById('downloadXaml');
+    const svgContainer = document.getElementById('svgContainer');
+    const xamlContainer = document.getElementById('xamlContainer');
+    const dropZone = document.getElementById('dropZone');
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const previewCodeButton = document.getElementById('previewCode');
+    const xamlCodeEditor = document.getElementById('xamlCodeEditor');
+    const xamlCodeArea = document.getElementById('xamlCodeArea');
+    const convertToXamlButton = document.getElementById('convertToXaml');
+    let isCodeVisible = false;
+    let currentSvgCode = '';
+    let isXamlEdited = false;
+    
+    // Initially disable the Convert again button
+    convertToXamlButton.disabled = true;
+    convertToXamlButton.classList.add('disabled');
+    
+    // Tab switching functionality with animation
+    tabButtons.forEach(button => {
+        // Tab switching
+        button.addEventListener('click', () => {
+            // Only process if this isn't already the active tab
+            if (!button.classList.contains('active')) {
+                // Remove active class from all tabs
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Get the target tab content
+                const tabId = button.dataset.tab;
+                const targetTab = document.getElementById(`${tabId}-tab`);
+                
+                // Animate out current tab and animate in new tab
+                tabContents.forEach(content => {
+                    if (content.classList.contains('active')) {
+                        // Animate out
+                        content.style.animation = 'fadeOut 0.2s ease forwards';
+                        setTimeout(() => {
+                            content.classList.remove('active');
+                            content.style.animation = '';
+                            
+                            // Animate in the new tab
+                            targetTab.classList.add('active');
+                            targetTab.style.animation = 'fadeIn 0.3s ease forwards';
+                        }, 200);
+                    }
+                });
+                
+                // Add active class to clicked tab
+                button.classList.add('active');
+            }
+        });
+    });
+    
+    // Set up drag and drop event handlers
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Handle dragenter and dragover events
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+    
+    // Handle dragleave and drop events
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight() {
+        dropZone.classList.add('active');
+    }
+    
+    function unhighlight() {
+        dropZone.classList.remove('active');
+    }
+    
+    // Handle dropped files
+    dropZone.addEventListener('drop', handleDrop, false);
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length) {
+            handleFiles(files);
+        }
+    }
+    
+    function handleFiles(files) {
+        const file = files[0];
+        if (file && file.type === 'image/svg+xml') {
+            // Update the file input for consistency
+            svgFileInput.files = files;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                svgTextInput.value = e.target.result;
+                updateSvgPreview(e.target.result);
+                currentSvgCode = e.target.result;
+                
+                // Automatically convert the SVG to XAML
+                convertSvgToXamlAndUpdate(e.target.result);
+            };
+            reader.readAsText(file);
+        } else {
+            alert('Please drop a valid SVG file.');
+        }
+    }
+    
+    // Handle file input
+    svgFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                svgTextInput.value = e.target.result;
+                updateSvgPreview(e.target.result);
+                currentSvgCode = e.target.result;
+                
+                // Automatically convert the SVG to XAML
+                convertSvgToXamlAndUpdate(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+    });
+    
+    // Add event listener for text input changes with debounce
+    let debounceTimeout;
+    svgTextInput.addEventListener('input', function() {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            const svgCode = svgTextInput.value.trim();
+            if (svgCode) {
+                updateSvgPreview(svgCode);
+                currentSvgCode = svgCode;
+                // Auto-convert if content has meaningful length
+                if (svgCode.length > 30) {
+                    convertSvgToXamlAndUpdate(svgCode);
+                }
+            }
+        }, 500); // Wait 500ms after user stops typing
+    });
+    
+    // Helper function to convert SVG and update UI
+    function convertSvgToXamlAndUpdate(svgCode) {
+        if (svgCode) {
+            try {
+                const xamlCode = convertSvgToXaml(svgCode);
+                xamlOutput.value = xamlCode;
+                updateXamlPreview();
+                // Reset XAML edit status since we just converted
+                isXamlEdited = false;
+                convertToXamlButton.disabled = true;
+                convertToXamlButton.classList.add('disabled');
+            } catch (error) {
+                console.error('Conversion error:', error);
+                xamlOutput.value = `Error: ${error.message}`;
+            }
+        }
+    }
+    
+    // Handle download button click
+    downloadButton.addEventListener('click', function() {
+        // If code editor is visible and has content, use that for download
+        const xamlCode = isCodeVisible && xamlCodeArea.value ? 
+            xamlCodeArea.value : xamlOutput.value;
+        
+        if (xamlCode && !xamlCode.startsWith('Error')) {
+            const filename = svgFileInput.files && svgFileInput.files[0] ? 
+                svgFileInput.files[0].name.replace('.svg', '.xaml') : 
+                'icon.xaml';
+            downloadFile(xamlCode, filename);
+        } else {
+            alert('No valid XAML code to download');
+        }
+    });
+    
+    // Toggle between visual preview and code view
+    previewCodeButton.addEventListener('click', function() {
+        isCodeVisible = !isCodeVisible;
+        
+        if (isCodeVisible) {
+            // Show code editor and hide visual preview
+            xamlCodeEditor.classList.remove('hidden');
+            xamlContainer.classList.add('hidden');
+            previewCodeButton.textContent = 'Visual preview';
+            
+            // Copy XAML from hidden output to editable area
+            xamlCodeArea.value = xamlOutput.value;
+
+            // Add event listener for xamlCodeArea to detect changes
+            xamlCodeArea.addEventListener('input', function() {
+                if (xamlCodeArea.value !== xamlOutput.value && !isXamlEdited) {
+                    isXamlEdited = true;
+                    convertToXamlButton.disabled = false;
+                    convertToXamlButton.classList.remove('disabled');
+                }
+            });
+        } else {
+            // Show visual preview and hide code editor
+            xamlCodeEditor.classList.add('hidden');
+            xamlContainer.classList.remove('hidden');
+            previewCodeButton.textContent = 'Preview code';
+            
+            // If code was changed, update the preview
+            if (xamlCodeArea.value !== xamlOutput.value) {
+                xamlOutput.value = xamlCodeArea.value;
+                updateXamlPreview();
+                isXamlEdited = true;
+                convertToXamlButton.disabled = false;
+                convertToXamlButton.classList.remove('disabled');
+            }
+        }
+    });
+    
+    // Update SVG preview
+    function updateSvgPreview(svgCode) {
+        svgContainer.innerHTML = svgCode;
+        // Ensure SVG is properly sized in the preview
+        const svgElement = svgContainer.querySelector('svg');
+        if (svgElement) {
+            svgElement.style.maxWidth = '100%';
+            svgElement.style.maxHeight = '100%';
+        }
+    }
+    
+    // Update XAML preview 
+    function updateXamlPreview() {
+        const xamlCode = xamlOutput.value;
+        
+        if (!xamlCode || xamlCode.startsWith('Error')) {
+            xamlContainer.innerHTML = '<div style="padding: 10px; color: #ff4444; text-align: center;">No valid XAML generated</div>';
+            return;
+        }
+        
+        try {
+            // Parse XAML to extract SVG-like content
+            const parser = new DOMParser();
+            const xamlDoc = parser.parseFromString(xamlCode, 'text/xml');
+            
+            // Create an SVG element for preview
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            
+            // Get the Canvas element from XAML
+            const canvas = xamlDoc.querySelector('Canvas');
+            if (canvas) {
+                const width = canvas.getAttribute('Width') || '100';
+                const height = canvas.getAttribute('Height') || '100';
+                
+                // Set viewBox based on Canvas dimensions
+                svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                
+                // Process Path elements
+                const paths = xamlDoc.querySelectorAll('Path');
+                paths.forEach(path => {
+                    const svgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    
+                    // Get data attribute (path commands)
+                    const data = path.getAttribute('Data');
+                    if (data) {
+                        svgPath.setAttribute('d', data);
+                    }
+                    
+                    // Apply fill
+                    const fill = path.getAttribute('Fill');
+                    if (fill) {
+                        svgPath.setAttribute('fill', convertXamlColorToSvg(fill));
+                    }
+                    
+                    // Apply stroke
+                    const stroke = path.getAttribute('Stroke');
+                    if (stroke) {
+                        svgPath.setAttribute('stroke', convertXamlColorToSvg(stroke));
+                    }
+                    
+                    // Apply stroke width
+                    const strokeThickness = path.getAttribute('StrokeThickness');
+                    if (strokeThickness) {
+                        svgPath.setAttribute('stroke-width', strokeThickness);
+                    }
+                    
+                    // Apply opacity
+                    const opacity = path.getAttribute('Opacity');
+                    if (opacity) {
+                        svgPath.setAttribute('opacity', opacity);
+                    }
+                    
+                    svg.appendChild(svgPath);
+                });
+                
+                // Process Rectangle elements
+                const rectangles = xamlDoc.querySelectorAll('Rectangle');
+                rectangles.forEach(rect => {
+                    const svgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    
+                    // Get position and size
+                    const x = rect.getAttribute('Canvas.Left') || '0';
+                    const y = rect.getAttribute('Canvas.Top') || '0';
+                    const width = rect.getAttribute('Width') || '0';
+                    const height = rect.getAttribute('Height') || '0';
+                    
+                    svgRect.setAttribute('x', x);
+                    svgRect.setAttribute('y', y);
+                    svgRect.setAttribute('width', width);
+                    svgRect.setAttribute('height', height);
+                    
+                    // Get radius for rounded corners
+                    const radiusX = rect.getAttribute('RadiusX');
+                    const radiusY = rect.getAttribute('RadiusY');
+                    
+                    if (radiusX) {
+                        svgRect.setAttribute('rx', radiusX);
+                    }
+                    
+                    if (radiusY) {
+                        svgRect.setAttribute('ry', radiusY);
+                    }
+                    
+                    // Apply fill
+                    const fill = rect.getAttribute('Fill');
+                    if (fill) {
+                        svgRect.setAttribute('fill', convertXamlColorToSvg(fill));
+                    }
+                    
+                    // Apply stroke
+                    const stroke = rect.getAttribute('Stroke');
+                    if (stroke) {
+                        svgRect.setAttribute('stroke', convertXamlColorToSvg(stroke));
+                    }
+                    
+                    // Apply stroke width
+                    const strokeThickness = rect.getAttribute('StrokeThickness');
+                    if (strokeThickness) {
+                        svgRect.setAttribute('stroke-width', strokeThickness);
+                    }
+                    
+                    svg.appendChild(svgRect);
+                });
+                
+                // Process Ellipse elements
+                const ellipses = xamlDoc.querySelectorAll('Ellipse');
+                ellipses.forEach(ellipse => {
+                    const svgEllipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+                    
+                    // Get position and size
+                    const left = parseFloat(ellipse.getAttribute('Canvas.Left') || '0');
+                    const top = parseFloat(ellipse.getAttribute('Canvas.Top') || '0');
+                    const width = parseFloat(ellipse.getAttribute('Width') || '0');
+                    const height = parseFloat(ellipse.getAttribute('Height') || '0');
+                    
+                    // Calculate center and radius
+                    const cx = left + width / 2;
+                    const cy = top + height / 2;
+                    const rx = width / 2;
+                    const ry = height / 2;
+                    
+                    svgEllipse.setAttribute('cx', cx);
+                    svgEllipse.setAttribute('cy', cy);
+                    svgEllipse.setAttribute('rx', rx);
+                    svgEllipse.setAttribute('ry', ry);
+                    
+                    // Apply fill
+                    const fill = ellipse.getAttribute('Fill');
+                    if (fill) {
+                        svgEllipse.setAttribute('fill', convertXamlColorToSvg(fill));
+                    }
+                    
+                    // Apply stroke
+                    const stroke = ellipse.getAttribute('Stroke');
+                    if (stroke) {
+                        svgEllipse.setAttribute('stroke', convertXamlColorToSvg(stroke));
+                    }
+                    
+                    // Apply stroke width
+                    const strokeThickness = ellipse.getAttribute('StrokeThickness');
+                    if (strokeThickness) {
+                        svgEllipse.setAttribute('stroke-width', strokeThickness);
+                    }
+                    
+                    svg.appendChild(svgEllipse);
+                });
+                
+                // Process Line elements
+                const lines = xamlDoc.querySelectorAll('Line');
+                lines.forEach(line => {
+                    const svgLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    
+                    // Get coordinates
+                    const x1 = line.getAttribute('X1') || '0';
+                    const y1 = line.getAttribute('Y1') || '0';
+                    const x2 = line.getAttribute('X2') || '0';
+                    const y2 = line.getAttribute('Y2') || '0';
+                    
+                    svgLine.setAttribute('x1', x1);
+                    svgLine.setAttribute('y1', y1);
+                    svgLine.setAttribute('x2', x2);
+                    svgLine.setAttribute('y2', y2);
+                    
+                    // Apply stroke
+                    const stroke = line.getAttribute('Stroke');
+                    if (stroke) {
+                        svgLine.setAttribute('stroke', convertXamlColorToSvg(stroke));
+                    } else {
+                        svgLine.setAttribute('stroke', '#000000'); // Default stroke for lines
+                    }
+                    
+                    // Apply stroke width
+                    const strokeThickness = line.getAttribute('StrokeThickness');
+                    if (strokeThickness) {
+                        svgLine.setAttribute('stroke-width', strokeThickness);
+                    } else {
+                        svgLine.setAttribute('stroke-width', '1'); // Default stroke width
+                    }
+                    
+                    svg.appendChild(svgLine);
+                });
+                
+                // Process TextBlock elements
+                const textBlocks = xamlDoc.querySelectorAll('TextBlock');
+                textBlocks.forEach(textBlock => {
+                    const svgText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    
+                    // Get position
+                    const x = textBlock.getAttribute('Canvas.Left') || '0';
+                    const y = textBlock.getAttribute('Canvas.Top') || '0';
+                    
+                    svgText.setAttribute('x', x);
+                    svgText.setAttribute('y', y);
+                    
+                    // Apply font attributes
+                    const fontFamily = textBlock.getAttribute('FontFamily');
+                    if (fontFamily) {
+                        svgText.setAttribute('font-family', fontFamily);
+                    }
+                    
+                    const fontSize = textBlock.getAttribute('FontSize');
+                    if (fontSize) {
+                        svgText.setAttribute('font-size', fontSize);
+                    }
+                    
+                    const fontWeight = textBlock.getAttribute('FontWeight');
+                    if (fontWeight) {
+                        svgText.setAttribute('font-weight', fontWeight);
+                    }
+                    
+                    // Apply fill (text color)
+                    const foreground = textBlock.getAttribute('Foreground') || textBlock.getAttribute('Fill');
+                    if (foreground) {
+                        svgText.setAttribute('fill', convertXamlColorToSvg(foreground));
+                    } else {
+                        svgText.setAttribute('fill', '#000000'); // Default text color
+                    }
+                    
+                    // Set text content
+                    svgText.textContent = textBlock.textContent || '';
+                    
+                    svg.appendChild(svgText);
+                });
+            }
+            
+            // Set the generated SVG as the preview
+            xamlContainer.innerHTML = '';
+            xamlContainer.appendChild(svg);
+            
+        } catch (error) {
+            console.error('Error generating XAML preview:', error);
+            xamlContainer.innerHTML = '<div style="padding: 10px; color: #ff4444; text-align: center;">Error generating preview</div>';
+        }
+    }
+    
+    // Convert XAML color format to SVG color format
+    function convertXamlColorToSvg(xamlColor) {
+        if (!xamlColor) return 'none';
+        
+        // Handle named colors
+        if (xamlColor === 'Transparent') return 'none';
+        
+        // Handle hex colors with alpha (#AARRGGBB format)
+        if (xamlColor.startsWith('#') && xamlColor.length === 9) {
+            // Extract alpha and RGB components
+            const alpha = parseInt(xamlColor.substring(1, 3), 16) / 255;
+            const red = parseInt(xamlColor.substring(3, 5), 16);
+            const green = parseInt(xamlColor.substring(5, 7), 16);
+            const blue = parseInt(xamlColor.substring(7, 9), 16);
+            
+            if (alpha < 1) {
+                return `rgba(${red}, ${green}, ${blue}, ${alpha.toFixed(2)})`;
+            } else {
+                return `#${xamlColor.substring(3)}`;
+            }
+        }
+        
+        // Return the original color if it's already in a format SVG understands
+        return xamlColor;
+    }
+    
+    // Download file helper
+    function downloadFile(content, filename) {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
+    }
+    
+    // Color conversion from SVG to XAML
+    function convertColor(color) {
+        if (!color || color === 'none') return 'Transparent';
+        
+        // Handle named colors
+        if (color.startsWith('#')) {
+            // Handle hex colors
+            if (color.length === 4) { // #RGB format
+                const r = color.charAt(1);
+                const g = color.charAt(2);
+                const b = color.charAt(3);
+                return `#FF${r}${r}${g}${g}${b}${b}`;
+            } else if (color.length === 7) { // #RRGGBB format
+                return `#FF${color.substring(1)}`;
+            }
+        } else if (color.startsWith('rgb')) {
+            // Handle rgb/rgba colors
+            const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
+            if (match) {
+                const r = parseInt(match[1]).toString(16).padStart(2, '0');
+                const g = parseInt(match[2]).toString(16).padStart(2, '0');
+                const b = parseInt(match[3]).toString(16).padStart(2, '0');
+                const a = match[4] ? Math.round(parseFloat(match[4]) * 255).toString(16).padStart(2, '0') : 'FF';
+                return `#${a}${r}${g}${b}`;
+            }
+        }
+        
+        // Return the original color if we can't parse it
+        return color;
+    }
+    
+    // Convert SVG transform to XAML transform
+    function convertTransform(transform) {
+        if (!transform) return '';
+        
+        let xamlTransform = '';
+        
+        // Process translate, scale, rotate, etc.
+        if (transform.includes('translate')) {
+            const match = transform.match(/translate\(([^)]+)\)/);
+            if (match) {
+                const values = match[1].split(',').map(v => parseFloat(v.trim()));
+                xamlTransform += `<TranslateTransform X="${values[0]}" Y="${values[1] || 0}" />`;
+            }
+        }
+        
+        if (transform.includes('scale')) {
+            const match = transform.match(/scale\(([^)]+)\)/);
+            if (match) {
+                const values = match[1].split(',').map(v => parseFloat(v.trim()));
+                xamlTransform += `<ScaleTransform ScaleX="${values[0]}" ScaleY="${values[1] || values[0]}" />`;
+            }
+        }
+        
+        if (transform.includes('rotate')) {
+            const match = transform.match(/rotate\(([^)]+)\)/);
+            if (match) {
+                const values = match[1].split(',').map(v => parseFloat(v.trim()));
+                const angle = values[0];
+                const centerX = values[1] || 0;
+                const centerY = values[2] || 0;
+                xamlTransform += `<RotateTransform Angle="${angle}" CenterX="${centerX}" CenterY="${centerY}" />`;
+            }
+        }
+        
+        if (xamlTransform) {
+            return `<Path.RenderTransform><TransformGroup>${xamlTransform}</TransformGroup></Path.RenderTransform>`;
+        }
+        
+        return '';
+    }
+    
+    // Convert SVG styles to XAML
+    function extractStyles(element) {
+        const styles = {};
+        
+        // Extract inline style attributes
+        if (element.hasAttribute('style')) {
+            const styleAttr = element.getAttribute('style');
+            const styleItems = styleAttr.split(';');
+            
+            for (const item of styleItems) {
+                if (item.trim()) {
+                    const [property, value] = item.split(':').map(s => s.trim());
+                    styles[property] = value;
+                }
+            }
+        }
+        
+        // Extract direct attributes (they override inline styles)
+        const attributes = ['fill', 'stroke', 'stroke-width', 'opacity', 'fill-opacity', 'stroke-opacity'];
+        for (const attr of attributes) {
+            if (element.hasAttribute(attr)) {
+                styles[attr] = element.getAttribute(attr);
+            }
+        }
+        
+        return styles;
+    }
+    
+    // Apply styles to XAML element
+    function applyStylesToXaml(styles) {
+        let xamlAttrs = '';
+        
+        if (styles.fill) {
+            xamlAttrs += ` Fill="${convertColor(styles.fill)}"`;
+        }
+        
+        if (styles.stroke && styles.stroke !== 'none') {
+            xamlAttrs += ` Stroke="${convertColor(styles.stroke)}"`;
+        }
+        
+        if (styles['stroke-width']) {
+            xamlAttrs += ` StrokeThickness="${styles['stroke-width']}"`;
+        }
+        
+        if (styles.opacity) {
+            xamlAttrs += ` Opacity="${styles.opacity}"`;
+        }
+        
+        if (styles['fill-opacity']) {
+            xamlAttrs += ` FillOpacity="${styles['fill-opacity']}"`;
+        }
+        
+        if (styles['stroke-opacity']) {
+            xamlAttrs += ` StrokeOpacity="${styles['stroke-opacity']}"`;
+        }
+        
+        return xamlAttrs;
+    }
+    
+    // Convert SVG to XAML
+    function convertSvgToXaml(svgCode) {
+        // Parse the SVG
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svgCode, 'image/svg+xml');
+        
+        // Check for parsing errors
+        const parserError = svgDoc.querySelector('parsererror');
+        if (parserError) {
+            throw new Error('Invalid SVG format');
+        }
+        
+        // Get the root SVG element
+        const svgElement = svgDoc.querySelector('svg');
+        if (!svgElement) {
+            throw new Error('No SVG element found');
+        }
+        
+        // Get SVG attributes
+        const width = svgElement.getAttribute('width') || '24';
+        const height = svgElement.getAttribute('height') || '24';
+        const viewBox = svgElement.getAttribute('viewBox') || `0 0 ${width} ${height}`;
+        
+        // Start building XAML
+        let xaml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xaml += '<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">\n';
+        xaml += `  <Canvas Width="${width}" Height="${height}" ClipToBounds="True">\n`;
+        
+        // Process SVG paths
+        const paths = svgElement.querySelectorAll('path');
+        paths.forEach(path => {
+            const d = path.getAttribute('d');
+            if (!d) return;
+            
+            const styles = extractStyles(path);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(path.getAttribute('transform'));
+            
+            xaml += `    <Path Data="${d}"${styleAttrs}>\n`;
+            if (transform) {
+                xaml += `      ${transform}\n`;
+            }
+            xaml += `    </Path>\n`;
+        });
+        
+        // Process circles
+        const circles = svgElement.querySelectorAll('circle');
+        circles.forEach(circle => {
+            const cx = parseFloat(circle.getAttribute('cx') || '0');
+            const cy = parseFloat(circle.getAttribute('cy') || '0');
+            const r = parseFloat(circle.getAttribute('r') || '0');
+            
+            const styles = extractStyles(circle);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(circle.getAttribute('transform'));
+            
+            xaml += `    <Ellipse Canvas.Left="${cx - r}" Canvas.Top="${cy - r}" Width="${r * 2}" Height="${r * 2}"${styleAttrs}>\n`;
+            if (transform) {
+                xaml += `      ${transform}\n`;
+            }
+            xaml += `    </Ellipse>\n`;
+        });
+        
+        // Process ellipses
+        const ellipses = svgElement.querySelectorAll('ellipse');
+        ellipses.forEach(ellipse => {
+            const cx = parseFloat(ellipse.getAttribute('cx') || '0');
+            const cy = parseFloat(ellipse.getAttribute('cy') || '0');
+            const rx = parseFloat(ellipse.getAttribute('rx') || '0');
+            const ry = parseFloat(ellipse.getAttribute('ry') || '0');
+            
+            const styles = extractStyles(ellipse);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(ellipse.getAttribute('transform'));
+            
+            xaml += `    <Ellipse Canvas.Left="${cx - rx}" Canvas.Top="${cy - ry}" Width="${rx * 2}" Height="${ry * 2}"${styleAttrs}>\n`;
+            if (transform) {
+                xaml += `      ${transform}\n`;
+            }
+            xaml += `    </Ellipse>\n`;
+        });
+        
+        // Process rectangles
+        const rects = svgElement.querySelectorAll('rect');
+        rects.forEach(rect => {
+            const x = rect.getAttribute('x') || '0';
+            const y = rect.getAttribute('y') || '0';
+            const width = rect.getAttribute('width') || '0';
+            const height = rect.getAttribute('height') || '0';
+            const rx = rect.getAttribute('rx');
+            const ry = rect.getAttribute('ry');
+            
+            const styles = extractStyles(rect);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(rect.getAttribute('transform'));
+            
+            let radiusAttrs = '';
+            if (rx && ry) {
+                radiusAttrs = ` RadiusX="${rx}" RadiusY="${ry}"`;
+            } else if (rx) {
+                radiusAttrs = ` RadiusX="${rx}" RadiusY="${rx}"`;
+            } else if (ry) {
+                radiusAttrs = ` RadiusX="${ry}" RadiusY="${ry}"`;
+            }
+            
+            xaml += `    <Rectangle Canvas.Left="${x}" Canvas.Top="${y}" Width="${width}" Height="${height}"${radiusAttrs}${styleAttrs}>\n`;
+            if (transform) {
+                xaml += `      ${transform}\n`;
+            }
+            xaml += `    </Rectangle>\n`;
+        });
+        
+        // Process lines
+        const lines = svgElement.querySelectorAll('line');
+        lines.forEach(line => {
+            const x1 = line.getAttribute('x1') || '0';
+            const y1 = line.getAttribute('y1') || '0';
+            const x2 = line.getAttribute('x2') || '0';
+            const y2 = line.getAttribute('y2') || '0';
+            
+            const styles = extractStyles(line);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(line.getAttribute('transform'));
+            
+            xaml += `    <Line X1="${x1}" Y1="${y1}" X2="${x2}" Y2="${y2}"${styleAttrs}>\n`;
+            if (transform) {
+                xaml += `      ${transform}\n`;
+            }
+            xaml += `    </Line>\n`;
+        });
+        
+        // Process polylines
+        const polylines = svgElement.querySelectorAll('polyline');
+        polylines.forEach(polyline => {
+            const points = polyline.getAttribute('points');
+            if (!points) return;
+            
+            // Convert points to a Path data format
+            const pointsArray = points.trim().split(/\s+|,/).filter(p => p);
+            let pathData = '';
+            
+            for (let i = 0; i < pointsArray.length; i += 2) {
+                if (i === 0) {
+                    pathData += `M ${pointsArray[i]},${pointsArray[i+1]} `;
+                } else {
+                    pathData += `L ${pointsArray[i]},${pointsArray[i+1]} `;
+                }
+            }
+            
+            const styles = extractStyles(polyline);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(polyline.getAttribute('transform'));
+            
+            xaml += `    <Path Data="${pathData}"${styleAttrs}>\n`;
+            if (transform) {
+                xaml += `      ${transform}\n`;
+            }
+            xaml += `    </Path>\n`;
+        });
+        
+        // Process polygons
+        const polygons = svgElement.querySelectorAll('polygon');
+        polygons.forEach(polygon => {
+            const points = polygon.getAttribute('points');
+            if (!points) return;
+            
+            // Convert points to a closed Path data format
+            const pointsArray = points.trim().split(/\s+|,/).filter(p => p);
+            let pathData = '';
+            
+            for (let i = 0; i < pointsArray.length; i += 2) {
+                if (i === 0) {
+                    pathData += `M ${pointsArray[i]},${pointsArray[i+1]} `;
+                } else {
+                    pathData += `L ${pointsArray[i]},${pointsArray[i+1]} `;
+                }
+            }
+            pathData += 'Z';
+            
+            const styles = extractStyles(polygon);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(polygon.getAttribute('transform'));
+            
+            xaml += `    <Path Data="${pathData}"${styleAttrs}>\n`;
+            if (transform) {
+                xaml += `      ${transform}\n`;
+            }
+            xaml += `    </Path>\n`;
+        });
+        
+        // Process text
+        const texts = svgElement.querySelectorAll('text');
+        texts.forEach(text => {
+            const x = text.getAttribute('x') || '0';
+            const y = text.getAttribute('y') || '0';
+            const content = text.textContent || '';
+            
+            const styles = extractStyles(text);
+            const styleAttrs = applyStylesToXaml(styles);
+            const transform = convertTransform(text.getAttribute('transform'));
+            
+            // Get font attributes
+            let fontAttrs = '';
+            if (text.getAttribute('font-family')) {
+                fontAttrs += ` FontFamily="${text.getAttribute('font-family')}"`;
+            }
+            if (text.getAttribute('font-size')) {
+                fontAttrs += ` FontSize="${text.getAttribute('font-size')}"`;
+            }
+            if (text.getAttribute('font-weight')) {
+                fontAttrs += ` FontWeight="${text.getAttribute('font-weight')}"`;
+            }
+            if (text.getAttribute('text-anchor')) {
+                const textAnchor = text.getAttribute('text-anchor');
+                let textAlign = 'Left';
+                if (textAnchor === 'middle') textAlign = 'Center';
+                if (textAnchor === 'end') textAlign = 'Right';
+                fontAttrs += ` TextAlignment="${textAlign}"`;
+            }
+            
+            xaml += `    <TextBlock Canvas.Left="${x}" Canvas.Top="${y}"${fontAttrs}${styleAttrs}>${content}`;
+            if (transform) {
+                xaml += `\n      ${transform}`;
+            }
+            xaml += `</TextBlock>\n`;
+        });
+        
+        // Process groups
+        const processGroup = (group, indentation = '    ') => {
+            let groupXaml = '';
+            const transform = convertTransform(group.getAttribute('transform'));
+            
+            if (transform) {
+                groupXaml += `${indentation}<Canvas>\n`;
+                groupXaml += `${indentation}  ${transform}\n`;
+                // Process all child elements
+                Array.from(group.children).forEach(child => {
+                    if (child.tagName === 'g') {
+                        groupXaml += processGroup(child, indentation + '  ');
+                    }
+                });
+                groupXaml += `${indentation}</Canvas>\n`;
+            } else {
+                // Process all child elements directly
+                Array.from(group.children).forEach(child => {
+                    if (child.tagName === 'g') {
+                        groupXaml += processGroup(child, indentation);
+                    }
+                });
+            }
+            
+            return groupXaml;
+        };
+        
+        // Add groups
+        const groups = svgElement.querySelectorAll('g');
+        groups.forEach(group => {
+            if (group.parentElement.tagName !== 'g') { // Only top-level groups
+                xaml += processGroup(group);
+            }
+        });
+        
+        // Close XAML
+        xaml += '  </Canvas>\n';
+        xaml += '</Viewbox>';
+        
+        return xaml;
+    }
+
+    // Add functionality for Convert to XAML button
+    convertToXamlButton.addEventListener('click', function() {
+        if (currentSvgCode && isXamlEdited) {
+            convertSvgToXamlAndUpdate(currentSvgCode);
+            
+            // If code editor is visible, update it with the new XAML
+            if (isCodeVisible) {
+                xamlCodeArea.value = xamlOutput.value;
+            }
+            
+            // Reset edit status
+            isXamlEdited = false;
+            convertToXamlButton.disabled = true;
+            convertToXamlButton.classList.add('disabled');
+        }
+    });
+}); 
