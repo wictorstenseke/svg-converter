@@ -5,16 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Page not found</title>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif; padding: 2rem; line-height: 1.6; background: #0f172a; color: #e2e8f0; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif; padding: 2rem; line-height: 1.6; background: #0f172a; color: #e2e8f0; min-height: 100vh; margin: 0; display: grid; place-items: center; }
       a { color: #60a5fa; }
-      .container { max-width: 720px; margin: 10vh auto; text-align: center; }
+      .container { max-width: 720px; margin: 0 2rem; text-align: center; }
       h1 { margin-bottom: 0.5rem; font-size: 2rem; }
       p { opacity: 0.9; }
-      .btn { display: inline-block; margin-top: 1rem; padding: 0.6rem 1rem; border: 1px solid #334155; border-radius: 8px; text-decoration: none; }
+      .btn { display: inline-block; margin-top: 1rem; padding: 0.6rem 1rem; border: 1px solid #334155; border-radius: 8px; text-decoration: none; color: inherit; background: rgba(255,255,255,0.02); transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+      .btn:hover { background: #1f2937; border-color: #475569; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.2); }
+      .logo { width: 250px; max-width: 100%; height: auto; display: block; margin: 0 auto 1rem; }
     </style>
   </head>
   <body>
     <div class="container">
+      <img class="logo" src="https://wallpapers.com/images/high/github-mascot-octocat-cartoon-g23ni2cyakwjy4g2.png" alt="GitHub Octocat mascot" width="250" loading="lazy">
       <h1>404 – Page not found</h1>
       <p>The page you’re looking for doesn’t exist.</p>
       <p><a class="btn" href="./index.html">Go back to the home page</a></p>
