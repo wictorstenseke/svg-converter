@@ -13,7 +13,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Basic JS syntax check
+        run: |
+          node -e "new Function(require('fs').readFileSync('script.js','utf8'))"
+
+      - name: HTML validation (tidy)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tidy
+          check() { tidy -qe "$1"; ec=$?; if [ $ec -eq 2 ]; then echo "::error file=$1::HTML errors found"; exit 2; fi; }
+          check index.html
+          check svg-to-bmp.html
+
+      - name: Broken links (README + HTML)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --exclude-mail --verbose "./README.md" "./**/*.html"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   deploy:
+    needs: test
     permissions:
       pages: write
       id-token: write
