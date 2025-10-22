@@ -1,0 +1,117 @@
+version: 1
+
+project:
+  name: svg-xaml-and-bmp-tools
+  type: static-site
+  languages: [html, css, js]
+  runtime: browser-only
+  deployment: github-pages
+
+edit-constraints:
+  - Do not introduce a build step, bundler, or frameworks (keep vanilla HTML/CSS/JS).
+  - Keep links and asset paths relative; preserve file names `index.html` and `svg-to-bmp.html`.
+  - Do not modify `example-svg/*` unless explicitly asked.
+  - Keep `script.js` syntactically valid (CI reads it for a syntax check).
+  - Avoid external network calls in app code; everything runs client-side.
+  - Prefer progressive enhancement; no Node-only APIs in browser code.
+
+style:
+  indentation: "4 spaces"
+  newline: "lf"
+  quotes_js: single
+  semicolons_js: true
+  html:
+    preserve_trailing_whitespace: true
+    allow_inline_style: true
+    void_style: any
+  css:
+    class_naming: kebab-case
+    units_preferred: [px, rem]
+  js:
+    language_level: es2018+
+    modules: false
+    globals_allowed: [DOMParser, Blob, URL, JSZip]
+    avoid: [eval, Function]
+
+files:
+  primary:
+    - index.html
+    - svg-to-bmp.html
+    - styles.css
+  shared_js:
+    - script.js
+  avoid_editing:
+    - .github/workflows/deploy_to_pages.yml
+    - example-svg/**
+    - .htmlvalidate.json
+
+editing-preferences:
+  - Keep code browser-only; do not add NPM deps.
+  - If refactoring shared JS, prefer extracting to `script.js` and including via <script src> in pages.
+  - Avoid duplicating logic across inline scripts and `script.js`; single source of truth if changing.
+  - Maintain accessibility patterns (e.g., `type="button"`, `aria-expanded` on accordion).
+  - Preserve UI behaviors (debounce input, non-blocking UI updates, gentle animations).
+  - When bumping cache-busting query on `styles.css` (e.g., `?v=2`), keep both pages in sync.
+  - Keep navigation links (`index.html` ⇄ `svg-to-bmp.html`) relative and functional.
+
+security:
+  - No remote analytics/trackers.
+  - No untrusted eval; treat pasted SVG as text only (DOMParser as used is fine).
+  - Keep downloads client-side via Blob URLs.
+  - Prefer DOMParser + explicit element creation over injecting untrusted markup with `innerHTML`.
+  - If adding any external script, pin version and add SRI + `crossorigin=anonymous`.
+
+performance:
+  - Use debouncing for text inputs (500ms as currently).
+  - Avoid heavy libraries; keep JS lightweight.
+  - Prefer DOM APIs and Canvas; no WebWorkers unless requested.
+  - Revoke object URLs (`URL.revokeObjectURL`) after use; clean up previews on removal.
+  - Avoid long blocking loops in event handlers; chunk work with `requestAnimationFrame` or small `setTimeout` slices if needed.
+
+browser-compat:
+  targets: evergreen-browsers
+  polyfills: none by default
+
+cdn-policy:
+  allowed:
+    - JSZip via pinned CDN on `svg-to-bmp.html` (current usage ok)
+  rules:
+    - Do not add new CDNs unless essential for UX; prefer zero-dependency solutions.
+    - If adding, pin exact version and include SRI hash.
+    - Use `defer` where possible to avoid blocking rendering.
+
+a11y:
+  - Buttons should use `type=button` unless submitting a form.
+  - Maintain focus styles and `aria-expanded` where toggles/accordions are present.
+  - Provide `alt` text for images (previews already include filename).
+
+js-patterns:
+  - Wrap page logic in `DOMContentLoaded` handlers to avoid globals leaking.
+  - Use guard clauses and early returns; avoid deep nesting.
+  - Keep functions small and descriptive; avoid magic numbers.
+  - Prefer `const`/`let`; no legacy `var`.
+
+validation-and-tests:
+  commands:
+    - node -e "new Function(require('fs').readFileSync('script.js','utf8'))"
+    - npx --yes html-validate@8 index.html svg-to-bmp.html
+  notes:
+    - Matches CI steps; run locally when making HTML/JS edits.
+    - CI also runs a link checker (lychee) on README and HTML.
+
+commit-messages:
+  convention: concise
+  examples:
+    - "feat(svg→xaml): improve transform handling and preview sync"
+    - "fix(bmp): maintain aspect ratio when height differs"
+    - "style(ui): refine tabs hover/active underline animation"
+
+code-generation-defaults:
+  - Prefer explanatory, readable JS with clear variable names.
+  - Use guard clauses; avoid deep nesting.
+  - Comments only for non-obvious rationale and edge cases.
+
+deployment:
+  - Output remains in repo root; no build artifacts.
+  - Preserve `.nojekyll` if present via CI.
+
