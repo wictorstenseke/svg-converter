@@ -13,7 +13,7 @@ Works entirely in the browser (no build/server). License: MIT.
 - SVG → XAML: `index.html` — Convert SVG to XAML with live preview and download.
 - SVG → Bitmap: `svg-to-bmp.html` — Batch-convert SVGs to BMP with size presets or custom size.
 
-## Key functions (XAML page)
+## Key functions for XAML page
 
 - `convertSvgToXaml(svgCode)`: Parses SVG and builds XAML (`Path`, `Ellipse`, `Rectangle`, `Line`, `TextBlock`), including styles and transforms.
 - `updateXamlPreview()`: Renders the generated XAML back into an SVG preview for quick visual verification.
@@ -22,7 +22,7 @@ Works entirely in the browser (no build/server). License: MIT.
 - `convertColor(color)` and `convertXamlColorToSvg(xamlColor)`: Handles color formats (hex, rgb/rgba, `#AARRGGBB`).
 - `downloadFile(content, filename)`: Utility to download the XAML result.
 
-## Key functions (Bitmap page)
+## Key functions for Bitmap page
 
 - `convertAllFiles()`: Orchestrates batch conversion with progress UI and results list.
 - `convertSVGToBMP(file)` → `processSVGToBMP(svgData, fileName)`: Draws SVG on canvas (with optional aspect ratio) and prepares BMP.
