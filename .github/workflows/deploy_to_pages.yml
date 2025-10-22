@@ -33,7 +33,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y tidy
-          check() { tidy -qe "$1"; ec=$?; if [ $ec -eq 2 ]; then echo "::error file=$1::HTML errors found"; exit 2; fi; }
+          check() {
+            ec=0
+            tidy -q -e "$1" || ec=$?
+            if [ "$ec" -eq 2 ]; then
+              echo "::error file=$1::HTML errors found"
+              exit 2
+            fi
+            return 0
+          }
           check index.html
           check svg-to-bmp.html
 
