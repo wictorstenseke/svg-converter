@@ -14,7 +14,7 @@
     </nav>
     <div class="container container--narrow container--plain">
         <header>
-            <h1 style="color: #ffffff;">SVG to BMP Converter</h1>
+            <h1>SVG to BMP Converter</h1>
             <p>Convert your SVG icons to high-quality BMP bitmap files</p>
         </header>
 
@@ -22,13 +22,13 @@
             <div class="settings-section">
                 <h3>Select Icon Size</h3>
                 <div class="size-presets">
-                    <button class="size-preset active" data-size="16">16px</button>
-                    <button class="size-preset" data-size="24">24px</button>
-                    <button class="size-preset" data-size="32">32px</button>
-                    <button class="size-preset" data-size="64">64px</button>
-                    <button class="size-preset" data-size="custom">Custom</button>
+                    <button type="button" class="size-preset active" data-size="16">16px</button>
+                    <button type="button" class="size-preset" data-size="24">24px</button>
+                    <button type="button" class="size-preset" data-size="32">32px</button>
+                    <button type="button" class="size-preset" data-size="64">64px</button>
+                    <button type="button" class="size-preset" data-size="custom">Custom</button>
                 </div>
-                <div class="custom-size-inputs" id="customSizeInputs" style="display: none;">
+                <div class="custom-size-inputs hidden" id="customSizeInputs">
                     <div class="custom-input-row">
                         <input type="number" id="customWidth" placeholder="Width" min="1" max="4096">
                         <span>×</span>
@@ -36,8 +36,8 @@
                     </div>
                 </div>
                 <div class="aspect-ratio-setting">
-                    <label for="maintainAspectRatio">
-                        <input type="checkbox" id="maintainAspectRatio" checked>
+                    <label>
+                        <input type="checkbox" id="maintainAspectRatio" checked aria-label="Maintain Aspect Ratio">
                         Maintain Aspect Ratio
                     </label>
                     <p class="aspect-ratio-description">
@@ -65,21 +65,21 @@
                 <div class="files-header">
                     <h3>Files Being Processed</h3>
                     <div class="button-group">
-                        <button id="downloadAllBtn" class="download-all-btn">Download All</button>
-                        <button id="clearAllBtn" class="clear-all-btn">Clear All</button>
+                        <button type="button" id="downloadAllBtn" class="download-all-btn">Download All</button>
+                        <button type="button" id="clearAllBtn" class="clear-all-btn">Clear All</button>
                     </div>
                 </div>
                 <div class="files-list" id="filesList"></div>
             </div>
 
-            <div class="progress-section" id="progressSection" style="display: none;">
+            <div class="progress-section hidden" id="progressSection">
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
                 <div class="progress-text" id="progressText">Converting files...</div>
             </div>
 
-            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-section hidden" id="resultsSection">
                 <div class="accordion-header" id="resultsAccordionHeader">
                     <button type="button" id="resultsToggleBtn" class="accordion-toggle" aria-expanded="false">
                         <span class="accordion-title">
@@ -91,7 +91,7 @@
                         </svg>
                     </button>
                 </div>
-                <div class="accordion-body" id="resultsAccordionBody" style="display: none;">
+                <div class="accordion-body hidden" id="resultsAccordionBody">
                     <div class="results-list" id="resultsList"></div>
                 </div>
             </div>

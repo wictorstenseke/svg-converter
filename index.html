@@ -13,7 +13,7 @@
     </nav>
     <div class="container container--narrow container--plain">
         <header>
-            <h1 style="color: #ffffff;">SVG to XAML Converter</h1>
+            <h1>SVG to XAML Converter</h1>
             <p>Convert your SVG icons to XAML code</p>
         </header>
     </div>
@@ -21,13 +21,13 @@
     
         
         <div class="tabs">
-            <button class="tab-button active" data-tab="drop">
+            <button type="button" class="tab-button active" data-tab="drop">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
                 </svg>
                 Drop SVG File
             </button>
-            <button class="tab-button" data-tab="paste">
+            <button type="button" class="tab-button" data-tab="paste">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z" fill="currentColor"/>
                 </svg>
@@ -59,14 +59,14 @@
             <div id="svgPreview" class="preview">
                 <h3>SVG Preview</h3>
                 <div id="svgContainer"></div>
-                <button id="convertToXaml">Convert again</button>
+                <button type="button" id="convertToXaml">Convert again</button>
             </div>
             <div id="xamlPreview" class="preview">
                 <h3>XAML Preview</h3>
                 <div id="xamlContainer"></div>
                 <div class="button-group">
-                    <button id="previewCode">Preview code</button>
-                    <button id="downloadXaml">Download XAML</button>
+                    <button type="button" id="previewCode">Preview code</button>
+                    <button type="button" id="downloadXaml">Download XAML</button>
                 </div>
                 <div id="xamlCodeEditor" class="code-editor hidden">
                     <textarea id="xamlCodeArea"></textarea>
